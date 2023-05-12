@@ -1,0 +1,124 @@
+#include<iostream>
+#include<fstream> //needed for reading from .txt file
+#include<vector>
+#include<string>
+
+// Yes there are global variables working 
+std::ifstream instructionFile; 
+std::string programFile;
+std::string inputString;
+char curState = '0';
+std::vector<char> TAPE(1,'B'); //will treat the infinate tape as a vector for is ability to dynamically change size as needed.
+std::vector<char>::iterator RW;;
+
+//called when the iterator goes out of the bounds of TAPE
+//will grow either left or right depending on D
+void expandTape(const char D){
+//    std::cout << "H" << std::endl;        //debug
+    if(D == 'R') {
+        TAPE.emplace_back('B');
+    }
+    else if(D == 'L') {
+        TAPE.emplace(TAPE.begin(),'B');
+        RW = TAPE.begin();
+        RW++;
+    }
+}
+
+//address issue of generating more space in the vector.
+bool delta(const char &Q, const char &Gamma){
+
+//step 0; open text file.
+instructionFile.open(programFile);
+
+//begin itterating through the text file, line by line untill the end of txt file or we found a match
+bool found = false;
+std::string instruction;
+char state, tape_symbol, new_state, new_tape_symbol, direction;
+
+
+while(instructionFile && !found){
+//  look at two characters (ignoring white space)
+    instructionFile >> state >> tape_symbol;
+    if(state != '/'){                       //if the instruction is not a comment
+        if(Q == state && Gamma == tape_symbol){
+            found = true;   //we've found the corrisponding delta combination 
+            instructionFile >> new_state >> new_tape_symbol >> direction;  //fetch where the TM should go to next.
+//            std::cout << new_state << " " << new_tape_symbol << " " << direction << std::endl;        //debug
+            *RW = new_tape_symbol;  //write to TAPE
+            curState = new_state;   //update state
+            if(direction == 'R') {RW++;}    //move RW head.
+            else{RW--;}
+            if(RW == TAPE.begin() || RW == TAPE.end()) {expandTape(direction);}
+//
+        }
+    }
+    instructionFile.ignore(INT_MAX, '\n');  //goto next line
+}
+instructionFile.close();    //error arise when you don't close the document;
+
+
+if(!found){ //only occures if there is no matching state and tape symbol. TM crashes.
+    std::cout << "TM has crashed! no instruction for (" << Q << "," << Gamma << ")" << std::endl;
+}
+return found;
+}
+
+void getID() {
+    std::vector<char>::iterator Read = TAPE.begin();
+    while(Read != TAPE.end()) {
+        if(Read == RW) {std::cout << "[" << curState << "]";}  //if the display iterator and RW head are at the same position, we need to display curState.
+        std::cout << *Read;
+        Read++;
+    } 
+    std::cout << std::endl;
+}
+
+int main(){
+//--------- fetching file -------------------
+std::cout << "Enter program file (Enter \"Q\" to exit): ";
+std::cin >> programFile;
+if(programFile == "Q") {return 0;}
+else{instructionFile.open(programFile);}
+
+while(!instructionFile.is_open())
+{
+std::cout << programFile << " was not found" << std::endl; 
+std::cout << "Enter program file (Enter \"Q\" to exit): ";
+std::cin >> programFile;    //getting the text file containig the instructions
+if(programFile == "Q") {return 0;}
+else{instructionFile.open(programFile);}
+}
+instructionFile.close();    //we don't need it yet.
+
+
+//------ GETTING INPUT STRING ----------------
+std::cout << "enter input string: ";
+std::cin >> inputString;
+
+//---------- FILLING TM TAPE ---------------
+for(int i = 0; i < inputString.size(); i++)
+{
+    TAPE.push_back(inputString[i]);
+}
+TAPE.push_back('B'); //capping off the front of the tape.
+RW = TAPE.begin();   // createmoved to the first input symbol 
+RW++;
+getID();        //dispay itnital ID
+
+//---------- DELTA --------------------
+bool good = true;
+while(good){
+    good = delta(curState,*RW);
+    if(curState == 'f'){
+        good = false;
+        getID();
+        std::cout << inputString << " was accepted by TM!" << std::endl;
+
+    } else {
+        getID();
+    }
+
+    int _ = 1;
+}
+}
